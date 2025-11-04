@@ -1,9 +1,9 @@
-import {expect} from '@playwright/test'
+import {expect, test} from '@playwright/test'
 import {Book} from '@prisma/client'
 import {faker} from '@faker-js/faker'
 import bcrypt from 'bcryptjs'
 
-import {test} from '../fixtures/review-fixture'
+import {AuthHelper} from '../helpers/auth.helper'
 import prisma from '../../src/lib/db'
 
 test.describe('Book Reviews', () => {
@@ -61,66 +61,116 @@ test.describe('Book Reviews', () => {
         }
     })
 
-    test('should show review form when user is logged in', async ({reviewPage, authHelper}) => {
+    test('should show review form when user is logged in', async ({page}) => {
+        const authHelper = new AuthHelper(page)
         await authHelper.loginUser()
-        await reviewPage.goto(testBook.id)
-        await expect(reviewPage.reviewForm).toBeVisible()
+        await page.goto(`/books/${testBook.id}`)
+        await expect(page.locator('form')).toBeVisible()
     })
 
-    test('should not show review form when user is not logged in', async ({reviewPage}) => {
-        await reviewPage.goto(testBook.id)
-        await expect(reviewPage.reviewForm).not.toBeVisible()
-        await expect(reviewPage.page.getByText('Sign in to leave a review')).toBeVisible()
+    test('should not show review form when user is not logged in', async ({page}) => {
+        await page.goto(`/books/${testBook.id}`)
+        await expect(page.locator('form')).not.toBeVisible()
+        await expect(page.getByText('Sign in to leave a review')).toBeVisible()
     })
 
-    test('should show validation error when submitting empty review', async ({reviewPage, authHelper}) => {
+    test('should show validation error when submitting empty review', async ({page}) => {
+        const authHelper = new AuthHelper(page)
         await authHelper.loginUser()
-        await reviewPage.goto(testBook.id)
-        await reviewPage.submitReview('', 0)
-        await expect(reviewPage.page.getByText('Review content is required')).toBeVisible()
-        await expect(reviewPage.page.getByText('Rating is required')).toBeVisible()
+        await page.goto(`/books/${testBook.id}`)
+        await page.getByLabel('Review').fill('')
+        await page.getByRole('button', {name: /Submit Review|Submitting.../}).click()
+        await expect(page.getByText('Review content is required')).toBeVisible()
+        await expect(page.getByText('Rating is required')).toBeVisible()
     })
 
-    test('should successfully submit review', async ({reviewPage, authHelper}) => {
+    test('should successfully submit review', async ({page}) => {
+        const authHelper = new AuthHelper(page)
         const testUser = await authHelper.loginUser()
-        await reviewPage.goto(testBook.id)
+        await page.goto(`/books/${testBook.id}`)
 
         const reviewContent = 'This is a test review'
         const rating = 4
 
-        await reviewPage.submitReview(reviewContent, rating)
+        await page.getByLabel('Review').fill(reviewContent)
+        await page.getByLabel('Rating').selectOption(rating.toString())
+
+        const [reviewResponse] = await Promise.all([
+            page.waitForResponse(res =>
+                res.url().includes('/api/books/') &&
+                res.url().includes('/reviews') &&
+                res.request().method() === 'POST'
+            ),
+            page.getByRole('button', {name: /Submit Review|Submitting.../}).click()
+        ])
+
+        if (!reviewResponse.ok()) {
+            throw new Error(`Review submission failed with status ${reviewResponse.status()}`)
+        }
 
         await prisma.user.delete({
             where: {email: testUser.email}
         })
     })
 
-    test('should hide review form after submitting a review', async ({reviewPage, authHelper}) => {
+    test('should hide review form after submitting a review', async ({page}) => {
+        const authHelper = new AuthHelper(page)
         const testUser = await authHelper.loginUser()
-        await reviewPage.goto(testBook.id)
+        await page.goto(`/books/${testBook.id}`)
 
-        await reviewPage.submitReview('Test review content', 4)
-        await reviewPage.page.waitForLoadState('networkidle')
+        await page.getByLabel('Review').fill('Test review content')
+        await page.getByLabel('Rating').selectOption('4')
 
-        await expect(reviewPage.reviewForm).not.toBeVisible()
-        await expect(reviewPage.page.getByText('You have already reviewed this book')).toBeVisible()
+        const [reviewResponse] = await Promise.all([
+            page.waitForResponse(res =>
+                res.url().includes('/api/books/') &&
+                res.url().includes('/reviews') &&
+                res.request().method() === 'POST'
+            ),
+            page.getByRole('button', {name: /Submit Review|Submitting.../}).click()
+        ])
+
+        if (!reviewResponse.ok()) {
+            throw new Error(`Review submission failed with status ${reviewResponse.status()}`)
+        }
+
+        await page.waitForLoadState('networkidle')
+
+        await expect(page.locator('form')).not.toBeVisible()
+        await expect(page.getByText('You have already reviewed this book')).toBeVisible()
 
         await prisma.user.delete({
             where: {email: testUser.email}
         })
     })
 
-    test('should show already reviewed message when revisiting page', async ({reviewPage, authHelper}) => {
+    test('should show already reviewed message when revisiting page', async ({page}) => {
+        const authHelper = new AuthHelper(page)
         const testUser = await authHelper.loginUser()
-        await reviewPage.goto(testBook.id)
+        await page.goto(`/books/${testBook.id}`)
 
-        await reviewPage.submitReview('Test review content', 4)
-        await reviewPage.page.waitForLoadState('networkidle')
+        await page.getByLabel('Review').fill('Test review content')
+        await page.getByLabel('Rating').selectOption('4')
 
-        await reviewPage.page.reload({waitUntil: 'networkidle'})
+        const [reviewResponse] = await Promise.all([
+            page.waitForResponse(res =>
+                res.url().includes('/api/books/') &&
+                res.url().includes('/reviews') &&
+                res.request().method() === 'POST'
+            ),
+            page.getByRole('button', {name: /Submit Review|Submitting.../}).click()
+        ])
 
-        await expect(reviewPage.reviewForm).not.toBeVisible()
-        await expect(reviewPage.page.getByText('You have already reviewed this book')).toBeVisible()
+        if (!reviewResponse.ok()) {
+            throw new Error(`Review submission failed with status ${reviewResponse.status()}`)
+        }
+
+        await page.waitForLoadState('networkidle')
+
+        await page.reload({waitUntil: 'networkidle'})
+
+        await expect(page.locator('form')).not.toBeVisible()
+        await expect(page.getByText('You have already reviewed this book')).toBeVisible()
 
         await prisma.user.delete({
             where: {email: testUser.email}
