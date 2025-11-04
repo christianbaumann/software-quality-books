@@ -1,17 +1,16 @@
-import {expect} from '@playwright/test'
+import {expect, test} from '@playwright/test'
 
-import {test} from '../fixtures/homepage-fixture'
 import {AuthHelper} from '../helpers/auth.helper'
 import prisma from '../../src/lib/db'
 
 test.describe('Homepage', () => {
-    test('should show add book button when user is logged in', async ({homePage, page}) => {
+    test('should show add book button when user is logged in', async ({page}) => {
         const authHelper = new AuthHelper(page);
         const testUser = await authHelper.loginUser()
 
-        await homePage.goto()
+        await page.goto('/')
 
-        const addBookButton = await homePage.getAddBookButton()
+        const addBookButton = page.getByRole('link', {name: 'Add New Book'})
         await expect(addBookButton).toBeVisible()
 
         await prisma.user.delete({
@@ -19,13 +18,17 @@ test.describe('Homepage', () => {
         })
     })
 
-    test('should navigate to login page when clicking Sign In button', async ({homePage}) => {
-        await homePage.goto()
-        await homePage.clickSignIn()
-        await expect(homePage.page).toHaveURL('/login')
-        await expect(homePage.page.getByRole('heading', {name: 'Sign in to your account'})).toBeVisible()
-        await expect(homePage.page.getByLabel('Email')).toBeVisible()
-        await expect(homePage.page.getByLabel('Password')).toBeVisible()
-        await expect(homePage.page.getByRole('button', {name: 'Sign In'})).toBeVisible()
+    test('should navigate to login page when clicking Sign In button', async ({page}) => {
+        await page.goto('/')
+
+        const signInButton = page.getByText('Sign In')
+        await signInButton.waitFor({state: 'visible'})
+        await signInButton.click()
+
+        await expect(page).toHaveURL('/login')
+        await expect(page.getByRole('heading', {name: 'Sign in to your account'})).toBeVisible()
+        await expect(page.getByLabel('Email')).toBeVisible()
+        await expect(page.getByLabel('Password')).toBeVisible()
+        await expect(page.getByRole('button', {name: 'Sign In'})).toBeVisible()
     })
 })
