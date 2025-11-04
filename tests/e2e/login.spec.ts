@@ -1,34 +1,33 @@
-import {expect} from '@playwright/test'
+import {expect, test} from '@playwright/test'
 import {faker} from '@faker-js/faker'
 import bcrypt from 'bcryptjs'
 
-import {test} from '../fixtures/login-fixture'
 import prisma from '../../src/lib/db'
 
 test.describe('Login Validation', () => {
 
-    test('should show both validation messages when fields are empty', async ({loginPage}) => {
-        await loginPage.goto()
-        await loginPage.clickSignIn()
-        await expect(loginPage.page.getByText('Invalid email address')).toBeVisible()
-        await expect(loginPage.page.getByText('Password is required')).toBeVisible()
+    test('should show both validation messages when fields are empty', async ({page}) => {
+        await page.goto('/login')
+        await page.locator('button[type="submit"]').click()
+        await expect(page.getByText('Invalid email address')).toBeVisible()
+        await expect(page.getByText('Password is required')).toBeVisible()
     })
 
-    test('should show only password validation when email is filled', async ({loginPage}) => {
-        await loginPage.goto()
-        await loginPage.fillEmail('test@example.com')
-        await loginPage.clickSignIn()
-        await expect(loginPage.page.getByText('Password is required')).toBeVisible()
+    test('should show only password validation when email is filled', async ({page}) => {
+        await page.goto('/login')
+        await page.locator('input[name="email"]').fill('test@example.com')
+        await page.locator('button[type="submit"]').click()
+        await expect(page.getByText('Password is required')).toBeVisible()
     })
 
-    test('should show only email validation when password is filled', async ({loginPage}) => {
-        await loginPage.goto()
-        await loginPage.fillPassword('password123')
-        await loginPage.clickSignIn()
-        await expect(loginPage.page.getByText('Invalid email address')).toBeVisible()
+    test('should show only email validation when password is filled', async ({page}) => {
+        await page.goto('/login')
+        await page.locator('input[name="password"]').fill('password123')
+        await page.locator('button[type="submit"]').click()
+        await expect(page.getByText('Invalid email address')).toBeVisible()
     })
 
-    test('should successfully login with valid credentials', async ({loginPage}) => {
+    test('should successfully login with valid credentials', async ({page}) => {
         const userId = faker.string.uuid()
         const userEmail = faker.internet.email()
         const userPassword = faker.internet.password()
@@ -56,15 +55,15 @@ test.describe('Login Validation', () => {
             password: userPassword
         }
 
-        await loginPage.goto();
-        await loginPage.fillEmail(testUser.email);
-        await loginPage.fillPassword(testUser.password);
-        await loginPage.clickSignIn();
+        await page.goto('/login')
+        await page.locator('input[name="email"]').fill(testUser.email)
+        await page.locator('input[name="password"]').fill(testUser.password)
+        await page.locator('button[type="submit"]').click()
 
-        await expect(loginPage.page).toHaveURL('/books');
+        await expect(page).toHaveURL('/books')
 
         await prisma.user.delete({
             where: {email: testUser.email}
-        });
+        })
     })
 })
