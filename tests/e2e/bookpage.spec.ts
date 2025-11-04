@@ -1,9 +1,8 @@
-import {expect} from '@playwright/test'
+import {expect, test} from '@playwright/test'
 import {Book} from '@prisma/client'
 import {faker} from '@faker-js/faker'
 import bcrypt from 'bcryptjs'
 
-import {test} from '../fixtures/bookpage-fixture'
 import prisma from '../../src/lib/db'
 
 test.describe('Book page data', () => {
@@ -65,15 +64,15 @@ test.describe('Book page data', () => {
         }
     })
 
-    test('should display book with correct title', async ({bookPage}) => {
-        await bookPage.goto(testBook.id)
-        const bookTitle = await bookPage.getBookTitle()
+    test('should display book with correct title', async ({page}) => {
+        await page.goto(`/books/${testBook.id}`)
+        const bookTitle = await page.getByTestId('book-title').textContent()
         expect(bookTitle).toBe(testBook.title)
     })
 
-    test('should display book with correct description', async ({bookPage}) => {
-        await bookPage.goto(testBook.id)
-        const bookDescription = await bookPage.getBookDescription()
+    test('should display book with correct description', async ({page}) => {
+        await page.goto(`/books/${testBook.id}`)
+        const bookDescription = await page.getByTestId('book-description').textContent()
         expect(bookDescription).toBe(testBook.description)
     })
 })
