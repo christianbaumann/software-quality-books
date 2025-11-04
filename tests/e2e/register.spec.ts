@@ -5,7 +5,7 @@ import prisma from '../../src/lib/db'
 test.describe('Registration', () => {
     test('shows success notification when registering a new account', async ({
                                                                                  registrationHelper,
-                                                                                 registerPage
+                                                                                 page
                                                                              }) => {
         const testUser = {
             id: faker.string.uuid(),
@@ -16,8 +16,8 @@ test.describe('Registration', () => {
 
         await registrationHelper.registerNewUser(testUser)
 
-        await expect(registerPage.page.getByText('Account created successfully!')).toBeVisible()
-        await expect(registerPage.page).toHaveURL('/login')
+        await expect(page.getByText('Account created successfully!')).toBeVisible()
+        await expect(page).toHaveURL('/login')
 
         await test.step('cleanup', async () => {
             await prisma.user.delete({
@@ -28,7 +28,7 @@ test.describe('Registration', () => {
 
         test('shows error when name is only 1 character', async ({
                                                                      registrationHelper,
-                                                                     registerPage
+                                                                     page
                                                                  }) => {
             const testUser = {
                 id: faker.string.uuid(),
@@ -39,13 +39,13 @@ test.describe('Registration', () => {
 
             await registrationHelper.registerNewUser(testUser)
 
-            await expect(registerPage.page.getByText('Name must be at least 2 characters')).toBeVisible()
-            await expect(registerPage.page).toHaveURL('/register')
+            await expect(page.getByText('Name must be at least 2 characters')).toBeVisible()
+            await expect(page).toHaveURL('/register')
         }),
 
         test('shows error when email format is invalid', async ({
                                                                     registrationHelper,
-                                                                    registerPage
+                                                                    page
                                                                 }) => {
             const testUser = {
                 id: faker.string.uuid(),
@@ -56,13 +56,13 @@ test.describe('Registration', () => {
 
             await registrationHelper.registerNewUser(testUser)
 
-            await expect(registerPage.page.getByText('Invalid email address')).toBeVisible()
-            await expect(registerPage.page).toHaveURL('/register')
+            await expect(page.getByText('Invalid email address')).toBeVisible()
+            await expect(page).toHaveURL('/register')
         }),
 
         test('shows error when password is only 5 characters', async ({
                                                                           registrationHelper,
-                                                                          registerPage
+                                                                          page
                                                                       }) => {
             const testUser = {
                 id: faker.string.uuid(),
@@ -73,13 +73,13 @@ test.describe('Registration', () => {
 
             await registrationHelper.registerNewUser(testUser)
 
-            await expect(registerPage.page.getByText('Password must be at least 8 characters')).toBeVisible()
-            await expect(registerPage.page).toHaveURL('/register')
+            await expect(page.getByText('Password must be at least 8 characters')).toBeVisible()
+            await expect(page).toHaveURL('/register')
         }),
 
         test('shows both name and email errors when password is valid', async ({
                                                                                    registrationHelper,
-                                                                                   registerPage
+                                                                                   page
                                                                                }) => {
             const testUser = {
                 id: faker.string.uuid(),
@@ -90,14 +90,13 @@ test.describe('Registration', () => {
 
             await registrationHelper.registerNewUser(testUser)
 
-            await expect(registerPage.page.getByText('Name must be at least 2 characters')).toBeVisible()
-            await expect(registerPage.page.getByText('Invalid email address')).toBeVisible()
-            await expect(registerPage.page).toHaveURL('/register')
+            await expect(page.getByText('Name must be at least 2 characters')).toBeVisible()
+            await expect(page.getByText('Invalid email address')).toBeVisible()
+            await expect(page).toHaveURL('/register')
         }),
 
         test('makes no API calls when validation fails', async ({
                                                                     registrationHelper,
-                                                                    registerPage,
                                                                     page
                                                                 }) => {
             let apiCallMade = false;
@@ -115,16 +114,16 @@ test.describe('Registration', () => {
 
             await registrationHelper.registerNewUser(testUser)
 
-            await expect(registerPage.page.getByText('Name must be at least 2 characters')).toBeVisible()
-            await expect(registerPage.page.getByText('Invalid email address')).toBeVisible()
+            await expect(page.getByText('Name must be at least 2 characters')).toBeVisible()
+            await expect(page.getByText('Invalid email address')).toBeVisible()
 
             expect(apiCallMade).toBe(false)
         }),
 
-        test('has correct login link text and path', async ({registerPage}) => {
-            await registerPage.goto()
+        test('has correct login link text and path', async ({page}) => {
+            await page.goto('/register')
 
-            const loginLink = registerPage.page.getByText('Already have an account? Sign in')
+            const loginLink = page.getByText('Already have an account? Sign in')
 
             await expect(loginLink).toBeVisible()
             await expect(loginLink).toHaveAttribute('href', '/login')

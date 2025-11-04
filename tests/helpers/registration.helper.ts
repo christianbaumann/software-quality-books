@@ -1,4 +1,4 @@
-import {RegisterPage} from '../page-objects/register-page'
+import {Page} from '@playwright/test'
 
 type TestUser = {
     id: string
@@ -8,17 +8,17 @@ type TestUser = {
 }
 
 export class RegistrationHelper {
-    private readonly registerPage: RegisterPage
+    private readonly page: Page
 
-    constructor(registerPage: RegisterPage) {
-        this.registerPage = registerPage
+    constructor(page: Page) {
+        this.page = page
     }
 
     async registerNewUser(testUser: TestUser) {
-        await this.registerPage.goto()
-        await this.registerPage.fillEmail(testUser.email)
-        await this.registerPage.fillPassword(testUser.password)
-        await this.registerPage.fillName(testUser.name)
-        await this.registerPage.clickCreateAccountButton()
+        await this.page.goto('/register')
+        await this.page.getByLabel('Email').fill(testUser.email)
+        await this.page.getByLabel('Password').fill(testUser.password)
+        await this.page.getByLabel('Name').fill(testUser.name)
+        await this.page.getByText('Create account').click()
     }
 }
