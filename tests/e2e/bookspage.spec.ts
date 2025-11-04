@@ -1,10 +1,10 @@
-import {expect} from '@playwright/test'
+import {expect, test} from '@playwright/test'
 import {Book} from '@prisma/client'
 import {faker} from '@faker-js/faker'
 import bcrypt from 'bcryptjs'
 
-import {test} from '../fixtures/bookspage-fixture'
 import prisma from '../../src/lib/db'
+import {generateTestId, TEST_DATA_IDS} from '../../src/utils/idHelpers'
 
 test.describe('Books Page', () => {
     test.describe.configure({mode: 'serial'})
@@ -61,20 +61,24 @@ test.describe('Books Page', () => {
         }
     })
 
-    test('should display created book', async ({booksPage}) => {
-        await booksPage.goto()
-        await expect(booksPage.getBookCard(testBook.title)).toBeVisible()
+    test('should display created book', async ({page}) => {
+        await page.goto('/books')
+        await expect(page.getByTestId(generateTestId(TEST_DATA_IDS.BOOK_CARD, testBook.title))).toBeVisible()
     })
 
-    test('should display book with correct title', async ({booksPage}) => {
-        await booksPage.goto()
-        const bookTitle = await booksPage.getBookTitle(testBook.title)
+    test('should display book with correct title', async ({page}) => {
+        await page.goto('/books')
+        const bookCard = page.getByTestId(generateTestId(TEST_DATA_IDS.BOOK_CARD, testBook.title))
+        const titleElement = bookCard.locator('h2')
+        const bookTitle = await titleElement.textContent()
         expect(bookTitle).toBe(testBook.title)
     })
 
-    test('should display book with correct created date', async ({booksPage}) => {
-        await booksPage.goto()
-        const bookCreatedDate = await booksPage.getBookCreatedDate(testBook.title)
+    test('should display book with correct created date', async ({page}) => {
+        await page.goto('/books')
+        const bookCard = page.getByTestId(generateTestId(TEST_DATA_IDS.BOOK_CARD, testBook.title))
+        const dateElement = bookCard.getByTestId('date-created')
+        const bookCreatedDate = await dateElement.textContent()
         const expectedDate = new Intl.DateTimeFormat('en-US').format(testBook.createdAt)
         expect(bookCreatedDate).toBe(expectedDate)
     })
