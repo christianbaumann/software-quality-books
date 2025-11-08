@@ -61,9 +61,5 @@ test.describe('Login Validation', () => {
         await page.locator('button[type="submit"]').click()
 
         await expect(page).toHaveURL('/books')
-
-        await prisma.user.delete({
-            where: {email: testUser.email}
-        })
     })
 })

@@ -1,21 +1,16 @@
 import {expect, test} from '@playwright/test'
 
 import {AuthHelper} from '../helpers/auth.helper'
-import prisma from '../../src/lib/db'
 
 test.describe('Homepage', () => {
     test('should show add book button when user is logged in', async ({page}) => {
         const authHelper = new AuthHelper(page);
-        const testUser = await authHelper.loginUser()
+        await authHelper.loginUser()
 
         await page.goto('/')
 
         const addBookButton = page.getByRole('link', {name: 'Add New Book'})
         await expect(addBookButton).toBeVisible()
-
-        await prisma.user.delete({
-            where: {email: testUser.email}
-        })
     })
 
     test('should navigate to login page when clicking Sign In button', async ({page}) => {

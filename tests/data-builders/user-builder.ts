@@ -77,11 +77,4 @@ export class UserBuilder {
             password: rawPassword  // Return the raw password instead of the hashed one
         }
     }
-
-    // Factory method to delete from database
-    static async delete(email: string) {
-        await prisma.user.delete({
-            where: {email}
-        })
-    }
 }

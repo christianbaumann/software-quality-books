@@ -46,14 +46,6 @@ test.describe('New Book Validation', () => {
         await authHelper.loginUser(testUser)
     })
 
-    test.afterEach(async () => {
-        if (testUser?.email) {
-            await prisma.user.delete({
-                where: {email: testUser.email}
-            })
-        }
-    })
-
     test('should show error when title is empty', async ({page}) => {
         await page.goto('/books/new')
         await page.getByLabel('Title').fill('')

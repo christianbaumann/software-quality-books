@@ -1,6 +1,5 @@
 import {test, expect} from '@playwright/test'
 import {faker} from '@faker-js/faker'
-import prisma from '../../src/lib/db'
 
 test.describe('Registration', () => {
     test('shows success notification when registering a new account', async ({page}) => {
@@ -19,12 +18,6 @@ test.describe('Registration', () => {
 
         await expect(page.getByText('Account created successfully!')).toBeVisible()
         await expect(page).toHaveURL('/login')
-
-        await test.step('cleanup', async () => {
-            await prisma.user.delete({
-                where: {email: testUser.email}
-            })
-        })
     })
 
     test('shows error when name is only 1 character', async ({page}) => {
