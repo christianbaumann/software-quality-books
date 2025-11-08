@@ -1,25 +1,11 @@
 import {expect, test} from '@playwright/test'
-import {Book} from '@prisma/client'
 import {faker} from '@faker-js/faker'
 import bcrypt from 'bcryptjs'
 
-import {AuthHelper} from '../helpers/auth.helper'
 import prisma from '../../src/lib/db'
 
 test.describe('Book Reviews', () => {
-    test.describe.configure({mode: 'serial'})
-
-    let testBook: Book & {
-        user: {
-            id: string
-            email: string
-            password: string
-            createdAt: Date
-            updatedAt: Date
-        } | null
-    }
-
-    test.beforeAll(async () => {
+    test('should show review form when user is logged in', async ({page}) => {
         const ownerId = faker.string.uuid()
         const ownerEmail = faker.internet.email()
         const ownerPassword = faker.internet.password()
@@ -39,7 +25,7 @@ test.describe('Book Reviews', () => {
             }
         })
 
-        testBook = await prisma.book.create({
+        const testBook = await prisma.book.create({
             data: {
                 id: faker.string.uuid(),
                 title: faker.lorem.words(3),
@@ -50,33 +36,168 @@ test.describe('Book Reviews', () => {
                 user: true
             }
         })
-    })
 
-    test.afterAll(async () => {
-        await prisma.book.delete({where: {id: testBook.id}})
-        if (testBook.user?.email) {
-            await prisma.user.delete({
-                where: {email: testBook.user.email}
-            })
+        const userId = faker.string.uuid()
+        const userEmail = faker.internet.email()
+        const userPassword = faker.internet.password()
+        const userName = faker.person.fullName()
+        const hashedPassword = await bcrypt.hash(userPassword, 10)
+
+        const user = await prisma.user.create({
+            data: {
+                id: userId,
+                email: userEmail,
+                password: hashedPassword,
+                profile: {
+                    create: {
+                        name: userName,
+                    }
+                }
+            },
+            include: {
+                profile: true
+            }
+        })
+
+        const testUser = {
+            ...user,
+            password: userPassword
         }
-    })
 
-    test('should show review form when user is logged in', async ({page}) => {
-        const authHelper = new AuthHelper(page)
-        await authHelper.loginUser()
+        await page.context().clearCookies()
+
+        const csrfResponse = await page.request.get('/api/auth/csrf')
+        const {csrfToken} = await csrfResponse.json()
+
+        const signInResponse = await page.request.post('/api/auth/callback/credentials', {
+            form: {
+                csrfToken,
+                email: testUser.email,
+                password: testUser.password,
+                callbackUrl: '/'
+            }
+        })
+
+        await page.request.get('/api/auth/session')
+        await page.goto('/')
+
         await page.goto(`/books/${testBook.id}`)
         await expect(page.locator('form')).toBeVisible()
     })
 
     test('should not show review form when user is not logged in', async ({page}) => {
+        const ownerId = faker.string.uuid()
+        const ownerEmail = faker.internet.email()
+        const ownerPassword = faker.internet.password()
+        const ownerName = faker.person.fullName()
+        const hashedOwnerPassword = await bcrypt.hash(ownerPassword, 10)
+
+        const owner = await prisma.user.create({
+            data: {
+                id: ownerId,
+                email: ownerEmail,
+                password: hashedOwnerPassword,
+                profile: {
+                    create: {
+                        name: ownerName,
+                    }
+                }
+            }
+        })
+
+        const testBook = await prisma.book.create({
+            data: {
+                id: faker.string.uuid(),
+                title: faker.lorem.words(3),
+                description: faker.lorem.paragraph(),
+                userId: owner.id
+            },
+            include: {
+                user: true
+            }
+        })
+
         await page.goto(`/books/${testBook.id}`)
         await expect(page.locator('form')).not.toBeVisible()
         await expect(page.getByText('Sign in to leave a review')).toBeVisible()
     })
 
     test('should show validation error when submitting empty review', async ({page}) => {
-        const authHelper = new AuthHelper(page)
-        await authHelper.loginUser()
+        const ownerId = faker.string.uuid()
+        const ownerEmail = faker.internet.email()
+        const ownerPassword = faker.internet.password()
+        const ownerName = faker.person.fullName()
+        const hashedOwnerPassword = await bcrypt.hash(ownerPassword, 10)
+
+        const owner = await prisma.user.create({
+            data: {
+                id: ownerId,
+                email: ownerEmail,
+                password: hashedOwnerPassword,
+                profile: {
+                    create: {
+                        name: ownerName,
+                    }
+                }
+            }
+        })
+
+        const testBook = await prisma.book.create({
+            data: {
+                id: faker.string.uuid(),
+                title: faker.lorem.words(3),
+                description: faker.lorem.paragraph(),
+                userId: owner.id
+            },
+            include: {
+                user: true
+            }
+        })
+
+        const userId = faker.string.uuid()
+        const userEmail = faker.internet.email()
+        const userPassword = faker.internet.password()
+        const userName = faker.person.fullName()
+        const hashedPassword = await bcrypt.hash(userPassword, 10)
+
+        const user = await prisma.user.create({
+            data: {
+                id: userId,
+                email: userEmail,
+                password: hashedPassword,
+                profile: {
+                    create: {
+                        name: userName,
+                    }
+                }
+            },
+            include: {
+                profile: true
+            }
+        })
+
+        const testUser = {
+            ...user,
+            password: userPassword
+        }
+
+        await page.context().clearCookies()
+
+        const csrfResponse = await page.request.get('/api/auth/csrf')
+        const {csrfToken} = await csrfResponse.json()
+
+        await page.request.post('/api/auth/callback/credentials', {
+            form: {
+                csrfToken,
+                email: testUser.email,
+                password: testUser.password,
+                callbackUrl: '/'
+            }
+        })
+
+        await page.request.get('/api/auth/session')
+        await page.goto('/')
+
         await page.goto(`/books/${testBook.id}`)
         await page.getByLabel('Review').fill('')
         await page.getByRole('button', {name: /Submit Review|Submitting.../}).click()
@@ -85,8 +206,81 @@ test.describe('Book Reviews', () => {
     })
 
     test('should successfully submit review', async ({page}) => {
-        const authHelper = new AuthHelper(page)
-        const testUser = await authHelper.loginUser()
+        const ownerId = faker.string.uuid()
+        const ownerEmail = faker.internet.email()
+        const ownerPassword = faker.internet.password()
+        const ownerName = faker.person.fullName()
+        const hashedOwnerPassword = await bcrypt.hash(ownerPassword, 10)
+
+        const owner = await prisma.user.create({
+            data: {
+                id: ownerId,
+                email: ownerEmail,
+                password: hashedOwnerPassword,
+                profile: {
+                    create: {
+                        name: ownerName,
+                    }
+                }
+            }
+        })
+
+        const testBook = await prisma.book.create({
+            data: {
+                id: faker.string.uuid(),
+                title: faker.lorem.words(3),
+                description: faker.lorem.paragraph(),
+                userId: owner.id
+            },
+            include: {
+                user: true
+            }
+        })
+
+        const userId = faker.string.uuid()
+        const userEmail = faker.internet.email()
+        const userPassword = faker.internet.password()
+        const userName = faker.person.fullName()
+        const hashedPassword = await bcrypt.hash(userPassword, 10)
+
+        const user = await prisma.user.create({
+            data: {
+                id: userId,
+                email: userEmail,
+                password: hashedPassword,
+                profile: {
+                    create: {
+                        name: userName,
+                    }
+                }
+            },
+            include: {
+                profile: true
+            }
+        })
+
+        const testUser = {
+            ...user,
+            password: userPassword
+        }
+
+        await page.context().clearCookies()
+
+        const csrfResponse = await page.request.get('/api/auth/csrf')
+        const {csrfToken} = await csrfResponse.json()
+
+        await page.request.post('/api/auth/callback/credentials', {
+            form: {
+                csrfToken,
+                email: testUser.email,
+                password: testUser.password,
+                callbackUrl: '/'
+            }
+        })
+
+        await page.request.get('/api/auth/session')
+        await page.goto('/')
+
         await page.goto(`/books/${testBook.id}`)
 
         const reviewContent = 'This is a test review'
@@ -107,15 +301,84 @@ test.describe('Book Reviews', () => {
         if (!reviewResponse.ok()) {
             throw new Error(`Review submission failed with status ${reviewResponse.status()}`)
         }
-
-        await prisma.user.delete({
-            where: {email: testUser.email}
-        })
     })
 
     test('should hide review form after submitting a review', async ({page}) => {
-        const authHelper = new AuthHelper(page)
-        const testUser = await authHelper.loginUser()
+        const ownerId = faker.string.uuid()
+        const ownerEmail = faker.internet.email()
+        const ownerPassword = faker.internet.password()
+        const ownerName = faker.person.fullName()
+        const hashedOwnerPassword = await bcrypt.hash(ownerPassword, 10)
+
+        const owner = await prisma.user.create({
+            data: {
+                id: ownerId,
+                email: ownerEmail,
+                password: hashedOwnerPassword,
+                profile: {
+                    create: {
+                        name: ownerName,
+                    }
+                }
+            }
+        })
+
+        const testBook = await prisma.book.create({
+            data: {
+                id: faker.string.uuid(),
+                title: faker.lorem.words(3),
+                description: faker.lorem.paragraph(),
+                userId: owner.id
+            },
+            include: {
+                user: true
+            }
+        })
+
+        const userId = faker.string.uuid()
+        const userEmail = faker.internet.email()
+        const userPassword = faker.internet.password()
+        const userName = faker.person.fullName()
+        const hashedPassword = await bcrypt.hash(userPassword, 10)
+
+        const user = await prisma.user.create({
+            data: {
+                id: userId,
+                email: userEmail,
+                password: hashedPassword,
+                profile: {
+                    create: {
+                        name: userName,
+                    }
+                }
+            },
+            include: {
+                profile: true
+            }
+        })
+
+        const testUser = {
+            ...user,
+            password: userPassword
+        }
+
+        await page.context().clearCookies()
+
+        const csrfResponse = await page.request.get('/api/auth/csrf')
+        const {csrfToken} = await csrfResponse.json()
+
+        await page.request.post('/api/auth/callback/credentials', {
+            form: {
+                csrfToken,
+                email: testUser.email,
+                password: testUser.password,
+                callbackUrl: '/'
+            }
+        })
+
+        await page.request.get('/api/auth/session')
+        await page.goto('/')
+
         await page.goto(`/books/${testBook.id}`)
 
         await page.getByLabel('Review').fill('Test review content')
@@ -138,15 +401,84 @@ test.describe('Book Reviews', () => {
 
         await expect(page.locator('form')).not.toBeVisible()
         await expect(page.getByText('You have already reviewed this book')).toBeVisible()
-
-        await prisma.user.delete({
-            where: {email: testUser.email}
-        })
     })
 
     test('should show already reviewed message when revisiting page', async ({page}) => {
-        const authHelper = new AuthHelper(page)
-        const testUser = await authHelper.loginUser()
+        const ownerId = faker.string.uuid()
+        const ownerEmail = faker.internet.email()
+        const ownerPassword = faker.internet.password()
+        const ownerName = faker.person.fullName()
+        const hashedOwnerPassword = await bcrypt.hash(ownerPassword, 10)
+
+        const owner = await prisma.user.create({
+            data: {
+                id: ownerId,
+                email: ownerEmail,
+                password: hashedOwnerPassword,
+                profile: {
+                    create: {
+                        name: ownerName,
+                    }
+                }
+            }
+        })
+
+        const testBook = await prisma.book.create({
+            data: {
+                id: faker.string.uuid(),
+                title: faker.lorem.words(3),
+                description: faker.lorem.paragraph(),
+                userId: owner.id
+            },
+            include: {
+                user: true
+            }
+        })
+
+        const userId = faker.string.uuid()
+        const userEmail = faker.internet.email()
+        const userPassword = faker.internet.password()
+        const userName = faker.person.fullName()
+        const hashedPassword = await bcrypt.hash(userPassword, 10)
+
+        const user = await prisma.user.create({
+            data: {
+                id: userId,
+                email: userEmail,
+                password: hashedPassword,
+                profile: {
+                    create: {
+                        name: userName,
+                    }
+                }
+            },
+            include: {
+                profile: true
+            }
+        })
+
+        const testUser = {
+            ...user,
+            password: userPassword
+        }
+
+        await page.context().clearCookies()
+
+        const csrfResponse = await page.request.get('/api/auth/csrf')
+        const {csrfToken} = await csrfResponse.json()
+
+        await page.request.post('/api/auth/callback/credentials', {
+            form: {
+                csrfToken,
+                email: testUser.email,
+                password: testUser.password,
+                callbackUrl: '/'
+            }
+        })
+
+        await page.request.get('/api/auth/session')
+        await page.goto('/')
+
         await page.goto(`/books/${testBook.id}`)
 
         await page.getByLabel('Review').fill('Test review content')
@@ -171,9 +503,5 @@ test.describe('Book Reviews', () => {
 
         await expect(page.locator('form')).not.toBeVisible()
         await expect(page.getByText('You have already reviewed this book')).toBeVisible()
-
-        await prisma.user.delete({
-            where: {email: testUser.email}
-        })
     })
 })
