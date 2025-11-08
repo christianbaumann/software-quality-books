@@ -1,11 +1,11 @@
 import {expect, test} from '@playwright/test'
 
-import {AuthHelper} from '../helpers/auth.helper'
+import {TestHelper} from '../helpers/test-helper'
 
 test.describe('Homepage', () => {
     test('should show add book button when user is logged in', async ({page}) => {
-        const authHelper = new AuthHelper(page);
-        await authHelper.loginUser()
+        const helper = new TestHelper(page)
+        await helper.createAndLoginUser()
 
         await page.goto('/')
 

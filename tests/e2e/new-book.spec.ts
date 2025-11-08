@@ -1,49 +1,13 @@
 import {expect, test} from '@playwright/test'
-import {faker} from '@faker-js/faker'
-import bcrypt from 'bcryptjs'
 
-import {AuthHelper} from '../helpers/auth.helper'
-import prisma from '../../src/lib/db'
+import {TestHelper} from '../helpers/test-helper'
 
 test.describe('New Book Validation', () => {
-    let testUser: {
-        id: string
-        email: string
-        password: string
-        createdAt: Date
-        updatedAt: Date
-    }
+    let testHelper: TestHelper
 
     test.beforeEach(async ({page}) => {
-        const userId = faker.string.uuid()
-        const userEmail = faker.internet.email()
-        const userPassword = faker.internet.password()
-        const userName = faker.person.fullName()
-        const hashedPassword = await bcrypt.hash(userPassword, 10)
-
-        const user = await prisma.user.create({
-            data: {
-                id: userId,
-                email: userEmail,
-                password: hashedPassword,
-                profile: {
-                    create: {
-                        name: userName,
-                    }
-                }
-            },
-            include: {
-                profile: true
-            }
-        })
-
-        testUser = {
-            ...user,
-            password: userPassword
-        }
-
-        const authHelper = new AuthHelper(page)
-        await authHelper.loginUser(testUser)
+        testHelper = new TestHelper(page)
+        await testHelper.createAndLoginUser()
     })
 
     test('should show error when title is empty', async ({page}) => {
