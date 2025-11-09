@@ -2,12 +2,12 @@ import {test as base} from '@playwright/test'
 import {RegisterPage} from '../page-objects/register-page'
 import {UserBuilder} from '../data-builders/user-builder'
 
-type RegisterFixtures = {
+type RegistrationFixtures = {
     registerPage: RegisterPage
     userBuilder: UserBuilder
 }
 
-export const test = base.extend<RegisterFixtures>({
+export const test = base.extend<RegistrationFixtures>({
     registerPage: async ({page}, use) => {
         await use(new RegisterPage(page))
     },

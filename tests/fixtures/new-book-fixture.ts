@@ -1,18 +1,18 @@
 import {test as base} from '@playwright/test'
-import {RegisterPage} from '../page-objects/register-page'
-import {UserBuilder} from '../data-builders/user-builder'
+import {NewBookPage} from '../page-objects/new-book-page'
+import {AuthHelper} from '../helpers/auth.helper'
 
-type RegistrationFixtures = {
-    registerPage: RegisterPage
-    userBuilder: UserBuilder
+type NewBookFixtures = {
+    newBookPage: NewBookPage
+    authHelper: AuthHelper
 }
 
-export const test = base.extend<RegistrationFixtures>({
-    registerPage: async ({page}, use) => {
-        await use(new RegisterPage(page))
+export const test = base.extend<NewBookFixtures>({
+    newBookPage: async ({page}, use) => {
+        await use(new NewBookPage(page))
     },
-    userBuilder: async ({}, use) => {
-        await use(new UserBuilder())
+    authHelper: async ({page}, use) => {
+        await use(new AuthHelper(page))
     }
 })
 

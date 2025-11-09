@@ -1,128 +1,110 @@
-import {test, expect} from '@playwright/test'
-import {faker} from '@faker-js/faker'
+import {test, expect} from '../fixtures/registration-fixture'
+import {UserBuilder} from '../data-builders/user-builder'
 
 test.describe('Registration', () => {
-    test('shows success notification when registering a new account', async ({page}) => {
-        const testUser = {
-            id: faker.string.uuid(),
-            email: faker.internet.email(),
-            password: faker.internet.password(),
-            name: faker.person.fullName()
-        }
+    test('shows success notification when registering a new account', async ({registerPage, userBuilder}) => {
+        const testUser = await userBuilder.build()
 
-        await page.goto('/register')
-        await page.getByLabel('Email').fill(testUser.email)
-        await page.getByLabel('Password').fill(testUser.password)
-        await page.getByLabel('Name').fill(testUser.name)
-        await page.getByText('Create account').click()
+        await registerPage.goto()
+        await registerPage.fillEmail(testUser.email)
+        await registerPage.fillPassword(testUser.password)
+        await registerPage.fillName(testUser.name)
+        await registerPage.clickCreateAccountButton()
 
-        await expect(page.getByText('Account created successfully!')).toBeVisible()
-        await expect(page).toHaveURL('/login')
+        await expect(registerPage.page.getByText('Account created successfully!')).toBeVisible()
+        await expect(registerPage.page).toHaveURL('/login')
     })
 
-    test('shows error when name is only 1 character', async ({page}) => {
-        const testUser = {
-            id: faker.string.uuid(),
-            email: faker.internet.email(),
-            password: faker.internet.password(),
-            name: 'A'
-        }
+    test('shows error when name is only 1 character', async ({registerPage, userBuilder}) => {
+        const testUser = await userBuilder
+            .withName('A')
+            .build()
 
-        await page.goto('/register')
-        await page.getByLabel('Email').fill(testUser.email)
-        await page.getByLabel('Password').fill(testUser.password)
-        await page.getByLabel('Name').fill(testUser.name)
-        await page.getByText('Create account').click()
+        await registerPage.goto()
+        await registerPage.fillEmail(testUser.email)
+        await registerPage.fillPassword(testUser.password)
+        await registerPage.fillName(testUser.name)
+        await registerPage.clickCreateAccountButton()
 
-        await expect(page.getByText('Name must be at least 2 characters')).toBeVisible()
-        await expect(page).toHaveURL('/register')
+        await expect(registerPage.page.getByText('Name must be at least 2 characters')).toBeVisible()
+        await expect(registerPage.page).toHaveURL('/register')
     })
 
-    test('shows error when email format is invalid', async ({page}) => {
-        const testUser = {
-            id: faker.string.uuid(),
-            email: 'not-an-email',
-            password: faker.internet.password(),
-            name: faker.person.fullName()
-        }
+    test('shows error when email format is invalid', async ({registerPage, userBuilder}) => {
+        const testUser = await userBuilder
+            .withEmail('not-an-email')
+            .build()
 
-        await page.goto('/register')
-        await page.getByLabel('Email').fill(testUser.email)
-        await page.getByLabel('Password').fill(testUser.password)
-        await page.getByLabel('Name').fill(testUser.name)
-        await page.getByText('Create account').click()
+        await registerPage.goto()
+        await registerPage.fillEmail(testUser.email)
+        await registerPage.fillPassword(testUser.password)
+        await registerPage.fillName(testUser.name)
+        await registerPage.clickCreateAccountButton()
 
-        await expect(page.getByText('Invalid email address')).toBeVisible()
-        await expect(page).toHaveURL('/register')
+        await expect(registerPage.page.getByText('Invalid email address')).toBeVisible()
+        await expect(registerPage.page).toHaveURL('/register')
     })
 
-    test('shows error when password is only 5 characters', async ({page}) => {
-        const testUser = {
-            id: faker.string.uuid(),
-            email: faker.internet.email(),
-            password: '12345',
-            name: faker.person.fullName()
-        }
+    test('shows error when password is only 5 characters', async ({registerPage, userBuilder}) => {
+        const testUser = await userBuilder
+            .withPassword('12345')
+            .build()
 
-        await page.goto('/register')
-        await page.getByLabel('Email').fill(testUser.email)
-        await page.getByLabel('Password').fill(testUser.password)
-        await page.getByLabel('Name').fill(testUser.name)
-        await page.getByText('Create account').click()
+        await registerPage.goto()
+        await registerPage.fillEmail(testUser.email)
+        await registerPage.fillPassword(testUser.password)
+        await registerPage.fillName(testUser.name)
+        await registerPage.clickCreateAccountButton()
 
-        await expect(page.getByText('Password must be at least 8 characters')).toBeVisible()
-        await expect(page).toHaveURL('/register')
+        await expect(registerPage.page.getByText('Password must be at least 8 characters')).toBeVisible()
+        await expect(registerPage.page).toHaveURL('/register')
     })
 
-    test('shows both name and email errors when password is valid', async ({page}) => {
-        const testUser = {
-            id: faker.string.uuid(),
-            email: 'not-an-email',
-            password: faker.internet.password(),
-            name: 'A'
-        }
+    test('shows both name and email errors when password is valid', async ({registerPage, userBuilder}) => {
+        const testUser = await userBuilder
+            .withName('A')
+            .withEmail('not-an-email')
+            .build()
 
-        await page.goto('/register')
-        await page.getByLabel('Email').fill(testUser.email)
-        await page.getByLabel('Password').fill(testUser.password)
-        await page.getByLabel('Name').fill(testUser.name)
-        await page.getByText('Create account').click()
+        await registerPage.goto()
+        await registerPage.fillEmail(testUser.email)
+        await registerPage.fillPassword(testUser.password)
+        await registerPage.fillName(testUser.name)
+        await registerPage.clickCreateAccountButton()
 
-        await expect(page.getByText('Name must be at least 2 characters')).toBeVisible()
-        await expect(page.getByText('Invalid email address')).toBeVisible()
-        await expect(page).toHaveURL('/register')
+        await expect(registerPage.page.getByText('Name must be at least 2 characters')).toBeVisible()
+        await expect(registerPage.page.getByText('Invalid email address')).toBeVisible()
+        await expect(registerPage.page).toHaveURL('/register')
     })
 
-    test('makes no API calls when validation fails', async ({page}) => {
-        let apiCallMade = false;
+    test('makes no API calls when validation fails', async ({registerPage, userBuilder, page}) => {
+        let apiCallMade = false
         await page.route('**/api/auth/register', async route => {
-            apiCallMade = true;
-            await route.fulfill({status: 200});
-        });
+            apiCallMade = true
+            await route.fulfill({status: 200})
+        })
 
-        const testUser = {
-            id: faker.string.uuid(),
-            email: 'not-an-email',
-            password: faker.internet.password(),
-            name: 'A'
-        }
+        const testUser = await userBuilder
+            .withName('A')
+            .withEmail('not-an-email')
+            .build()
 
-        await page.goto('/register')
-        await page.getByLabel('Email').fill(testUser.email)
-        await page.getByLabel('Password').fill(testUser.password)
-        await page.getByLabel('Name').fill(testUser.name)
-        await page.getByText('Create account').click()
+        await registerPage.goto()
+        await registerPage.fillEmail(testUser.email)
+        await registerPage.fillPassword(testUser.password)
+        await registerPage.fillName(testUser.name)
+        await registerPage.clickCreateAccountButton()
 
-        await expect(page.getByText('Name must be at least 2 characters')).toBeVisible()
-        await expect(page.getByText('Invalid email address')).toBeVisible()
+        await expect(registerPage.page.getByText('Name must be at least 2 characters')).toBeVisible()
+        await expect(registerPage.page.getByText('Invalid email address')).toBeVisible()
 
         expect(apiCallMade).toBe(false)
     })
 
-    test('has correct login link text and path', async ({page}) => {
-        await page.goto('/register')
+    test('has correct login link text and path', async ({registerPage}) => {
+        await registerPage.goto()
 
-        const loginLink = page.getByText('Already have an account? Sign in')
+        const loginLink = registerPage.page.getByText('Already have an account? Sign in')
 
         await expect(loginLink).toBeVisible()
         await expect(loginLink).toHaveAttribute('href', '/login')
